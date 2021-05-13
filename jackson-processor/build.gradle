@@ -1,0 +1,19 @@
+dependencies {
+    compile project(':jackson-processor-annotations')
+
+    compile 'com.fasterxml.jackson.core:jackson-databind'
+    compile 'com.fasterxml.jackson.core:jackson-annotations'
+    compile 'com.squareup:javapoet'
+    compile 'com.google.guava:guava'
+
+    annotationProcessor 'com.google.auto.service:auto-service'
+    compileOnly 'com.google.auto.service:auto-service-annotations'
+    annotationProcessor 'org.immutables:value'
+    compileOnly 'org.immutables:value::annotations'
+
+    testImplementation 'com.google.testing.compile:compile-testing'
+    testImplementation 'com.google.guava:guava'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api'
+}
