@@ -1,0 +1,70 @@
+package net.ckozak.jackson.examples;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.ser.ResolvableSerializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.Optional;
+import java.util.OptionalInt;
+import javax.annotation.processing.Generated;
+
+@Generated("net.ckozak.jackson.processor.JacksonAnnotationProcessor")
+public final class Simple_GeneratedSerializer extends StdSerializer<Simple> implements ResolvableSerializer {
+    private JsonSerializer<SomeType> serializer3;
+
+    public Simple_GeneratedSerializer() {
+        super(TypeFactory.defaultInstance().constructType(new TypeReference<Simple>() {}));
+    }
+
+    @Override
+    public void serialize(Simple value, JsonGenerator generator, SerializerProvider provider) throws
+            IOException {
+        generator.writeStartObject(value);
+        generator.writeStringField("foo", value.getFoo());
+        generator.writeNumberField("int", value.getNumeric());
+        serializeField2(value.getBoxedNumeric(), generator);
+        serializer3.serialize(value.getSomeType(), generator, provider);
+        serializeField4(value.getOptionalInt(), generator);
+        serializeField5(value.getOptionalBigDecimal(), generator);
+        generator.writeObjectField("field", value.fieldValue);
+        generator.writeEndObject();
+    }
+
+    private static void serializeField2(Integer value, JsonGenerator generator) throws IOException {
+        if (value == null) {
+            generator.writeNullField("boxedInt");
+        } else {
+            generator.writeNumberField("boxedInt", value);
+        }
+    }
+
+    private static void serializeField4(OptionalInt value, JsonGenerator generator) throws
+            IOException {
+        if (value.isPresent()) {
+            generator.writeNumberField("optionalInt", value.getAsInt());
+        } else {
+            generator.writeNullField("optionalInt");
+        }
+    }
+
+    private static void serializeField5(Optional<BigDecimal> value, JsonGenerator generator) throws
+            IOException {
+        if (value.isPresent()) {
+            generator.writeNumberField("optionalBigDecimal", value.get());
+        } else {
+            generator.writeNullField("optionalBigDecimal");
+        }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void resolve(SerializerProvider provider) throws JsonMappingException {
+        serializer3 = (JsonSerializer<SomeType>) (JsonSerializer) provider.findValueSerializer(provider.getTypeFactory().constructType(new TypeReference<SomeType>() {}));
+    }
+}

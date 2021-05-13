@@ -1,0 +1,4 @@
+rootProject.name = 'jackson-processor-root'
+
+include 'jackson-processor-annotations'
+include 'jackson-processor'
