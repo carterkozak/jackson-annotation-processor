@@ -19,12 +19,10 @@ package net.ckozak.jackson.examples;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonCreator.Mode;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
-import net.ckozak.jackson.annotations.JacksonProcessor;
 
-@JacksonProcessor
-@JsonSerialize(using = ParameterizedSerializer.class)
+// @JacksonProcessor
+// @JsonSerialize(using = ParameterizedSerializer.class)
 public final class Parameterized<T> {
 
     private final String value;

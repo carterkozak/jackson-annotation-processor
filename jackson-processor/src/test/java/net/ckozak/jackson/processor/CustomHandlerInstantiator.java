@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.introspect.Annotated;
 import com.fasterxml.jackson.databind.jsontype.TypeIdResolver;
 import com.fasterxml.jackson.databind.jsontype.TypeResolverBuilder;
 
+@SuppressWarnings("unused")
 public final class CustomHandlerInstantiator extends HandlerInstantiator {
 
     public static final HandlerInstantiator INSTANCE = new CustomHandlerInstantiator();
