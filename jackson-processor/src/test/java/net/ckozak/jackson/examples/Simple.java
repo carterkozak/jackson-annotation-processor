@@ -19,14 +19,13 @@ package net.ckozak.jackson.examples;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonCreator.Mode;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.OptionalInt;
 import net.ckozak.jackson.annotations.JacksonProcessor;
 
 @JacksonProcessor
-@JsonSerialize(using = SimpleSerializer.class)
+// @JsonSerialize(using = Simple_GeneratedSerializer.class)
 public final class Simple {
 
     private final String value;
