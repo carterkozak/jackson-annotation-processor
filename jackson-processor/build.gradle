@@ -17,5 +17,5 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
 
-    testAnnotationProcessor project(':jackson-processor')
+//    testAnnotationProcessor project(':jackson-processor')
 }

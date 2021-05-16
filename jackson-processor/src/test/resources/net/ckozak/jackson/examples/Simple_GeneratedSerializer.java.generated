@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.ResolvableSerializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -19,7 +18,7 @@ public final class Simple_GeneratedSerializer extends StdSerializer<Simple> impl
     private JsonSerializer<SomeType> serializer3;
 
     public Simple_GeneratedSerializer() {
-        super(TypeFactory.defaultInstance().constructType(new TypeReference<Simple>() {}));
+        super(Simple.class);
     }
 
     @Override

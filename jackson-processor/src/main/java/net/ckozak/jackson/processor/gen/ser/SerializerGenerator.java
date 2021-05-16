@@ -17,12 +17,10 @@
 package net.ckozak.jackson.processor.gen.ser;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.ResolvableSerializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.collect.ImmutableList;
 import com.squareup.javapoet.AnnotationSpec;
 import com.squareup.javapoet.ClassName;
@@ -40,6 +38,7 @@ import javax.annotation.processing.Generated;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
+import net.ckozak.jackson.processor.TypeNames;
 
 public final class SerializerGenerator {
 
@@ -73,11 +72,7 @@ public final class SerializerGenerator {
                 .addFields(fieldSpecs)
                 .addMethod(MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
-                        .addStatement(
-                                "super($T.defaultInstance().constructType(new $T<$T>() {}))",
-                                TypeFactory.class,
-                                TypeReference.class,
-                                targetType)
+                        .addStatement("super($T.class)", TypeNames.erased(targetType))
                         .build());
 
         if (typeElement.getAnnotation(Deprecated.class) != null) {
