@@ -25,27 +25,29 @@ import javax.lang.model.element.VariableElement;
 final class PropertyNames {
 
     static String name(JsonProperty property, ExecutableElement method) {
-        String propertyValue = property.value();
-        if (Objects.equals(JsonProperty.USE_DEFAULT_NAME, propertyValue)) {
-            return method.getSimpleName().toString();
-        }
-        return propertyValue;
-    }
-
-    static String name(JsonProperty property, VariableElement variable) {
-        String propertyValue = property.value();
-        if (Objects.equals(JsonProperty.USE_DEFAULT_NAME, propertyValue)) {
-            return variable.getSimpleName().toString();
-        }
-        return propertyValue;
+        return name(property.value(), method);
     }
 
     static String name(JsonGetter property, ExecutableElement method) {
-        String propertyValue = property.value();
-        if (Objects.equals(JsonProperty.USE_DEFAULT_NAME, propertyValue)) {
+        return name(property.value(), method);
+    }
+
+    static String name(JsonProperty property, VariableElement variable) {
+        return name(property.value(), variable);
+    }
+
+    static String name(String annotationValue, ExecutableElement method) {
+        if (Objects.equals(JsonProperty.USE_DEFAULT_NAME, annotationValue)) {
             return method.getSimpleName().toString();
         }
-        return propertyValue;
+        return annotationValue;
+    }
+
+    static String name(String annotationValue, VariableElement variable) {
+        if (Objects.equals(JsonProperty.USE_DEFAULT_NAME, annotationValue)) {
+            return variable.getSimpleName().toString();
+        }
+        return annotationValue;
     }
 
     private PropertyNames() {}

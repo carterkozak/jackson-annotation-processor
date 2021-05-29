@@ -16,10 +16,6 @@
 
 package net.ckozak.jackson.processor;
 
-import com.fasterxml.jackson.annotation.JacksonAnnotation;
-import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
@@ -28,9 +24,9 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeName;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
@@ -38,16 +34,15 @@ import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
@@ -109,27 +104,13 @@ public final class JacksonAnnotationProcessor extends AbstractProcessor {
             List<AccessorField> accessorFields = new ArrayList<>();
             TypeElement typeElement = (TypeElement) element;
             for (Element enclosed : typeElement.getEnclosedElements()) {
+                List<AnnotationMirror> jacksonAnnotations = JacksonAnnotationExtraction.getJacksonAnnotations(enclosed);
+                if (jacksonAnnotations.isEmpty()) {
+                    continue;
+                }
                 if (!ENCLOSED_ANNOTATED_ELEMENTS.contains(enclosed.getKind())) {
-                    continue;
-                }
-                Collection<AnnotationMirror> jacksonAnnotations = getJacksonAnnotations(enclosed);
-                for (AnnotationMirror mirror : jacksonAnnotations) {
-                    String name = mirror.getAnnotationType()
-                            .asElement()
-                            .getSimpleName()
-                            .toString();
-                    switch (name) {
-                        case "com.fasterxml.jackson.annotation.JsonProperty":
-                        case "com.fasterxml.jackson.annotation.JsonGetter":
-                            break;
-                        default:
-                            messager.printMessage(Kind.ERROR, "Unexpected annotation: " + name, enclosed);
-                    }
-                }
-                JsonProperty property = enclosed.getAnnotation(JsonProperty.class);
-                JsonGetter getter = enclosed.getAnnotation(JsonGetter.class);
-                if (property == null && getter == null) {
-                    continue;
+                    messager.printMessage(
+                            Kind.ERROR, "Unsupported annotated element type: " + enclosed.getKind(), enclosed);
                 }
                 if (enclosed.getModifiers().contains(Modifier.PRIVATE)
                         || enclosed.getModifiers().contains(Modifier.PROTECTED)) {
@@ -140,6 +121,79 @@ public final class JacksonAnnotationProcessor extends AbstractProcessor {
                 if (enclosed.getModifiers().contains(Modifier.STATIC)) {
                     messager.printMessage(Kind.ERROR, "Static elements are not supported", enclosed);
                     continue;
+                }
+                if (enclosed.getKind() == ElementKind.METHOD) {
+                    ExecutableElement executableElement = (ExecutableElement) enclosed;
+                    if (!executableElement.getParameters().isEmpty()) {
+                        messager.printMessage(
+                                Kind.ERROR, "Getter method must not take any arguments", executableElement);
+                        continue;
+                    }
+                }
+                for (AnnotationMirror mirror : jacksonAnnotations) {
+                    AnnotationVisitors.visit(mirror, new JacksonAnnotationVisitor<Void>() {
+                        @Override
+                        public Void visitJsonProperty(AnnotationMirror mirror) {
+                            Map<? extends ExecutableElement, ? extends AnnotationValue> annotationValues =
+                                    elements.getElementValuesWithDefaults(mirror);
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitJsonGetter(AnnotationMirror mirror) {
+                            Map<? extends ExecutableElement, ? extends AnnotationValue> annotationValues =
+                                    elements.getElementValuesWithDefaults(mirror);
+
+                            if (annotationValues.size() != 1) {
+                                throw new IllegalStateException(
+                                        "Unexpected annotations found on JsonGetter: " + annotationValues);
+                            }
+                            String keyName = annotationValues
+                                    .keySet()
+                                    .iterator()
+                                    .next()
+                                    .getSimpleName()
+                                    .toString();
+                            if (!Objects.equals("value", keyName)) {
+                                throw new RuntimeException("Unexpected property name: " + keyName);
+                            }
+                            // JsonGetter is only supported on methods
+                            ExecutableElement executableElement = (ExecutableElement) enclosed;
+                            String propertyName = PropertyNames.name(
+                                    (String) annotationValues
+                                            .values()
+                                            .iterator()
+                                            .next()
+                                            .getValue(),
+                                    (ExecutableElement) enclosed);
+                            accessorMethods.add(AccessorMethod.builder()
+                                    .method(executableElement)
+                                    .property(BoundProperty.builder()
+                                            .name(propertyName)
+                                            .type(TypeName.get(executableElement.getReturnType()))
+                                            .build())
+                                    .build());
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitJsonSetter(AnnotationMirror _mirror) {
+                            // Ignored for serialization
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitJsonCreator(AnnotationMirror _mirror) {
+                            // Ignored for serialization
+                            return null;
+                        }
+
+                        @Override
+                        public Void visitJsonIgnore(AnnotationMirror _mirror) {
+                            // Doesn't mean anything given our annotation requirement. Should we throw in this case?
+                            return null;
+                        }
+                    });
                 }
                 if (enclosed.getKind() == ElementKind.METHOD) {
                     ExecutableElement executableElement = (ExecutableElement) enclosed;
@@ -216,25 +270,5 @@ public final class JacksonAnnotationProcessor extends AbstractProcessor {
             }
         }
         return false;
-    }
-
-    private static Collection<AnnotationMirror> getJacksonAnnotations(AnnotatedConstruct element) {
-        Set<AnnotationMirror> jacksonAnnotations = new LinkedHashSet<>();
-        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
-            DeclaredType annotationType = mirror.getAnnotationType();
-            Element annotationTypeElement = annotationType.asElement();
-            for (AnnotationMirror metaAnnotationMirror : annotationTypeElement.getAnnotationMirrors()) {
-                Element metaAnnotationElement =
-                        metaAnnotationMirror.getAnnotationType().asElement();
-                String toString = metaAnnotationElement.toString();
-                String nameString = metaAnnotationElement.getSimpleName().toString();
-                if (metaAnnotationElement.getSimpleName().contentEquals(JacksonAnnotationsInside.class.getName())) {
-                    jacksonAnnotations.addAll(getJacksonAnnotations(annotationTypeElement));
-                } else if (metaAnnotationElement.getSimpleName().contentEquals(JacksonAnnotation.class.getName())) {
-                    jacksonAnnotations.add(mirror);
-                }
-            }
-        }
-        return jacksonAnnotations;
     }
 }
