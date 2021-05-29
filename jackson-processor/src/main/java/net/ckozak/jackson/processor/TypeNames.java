@@ -33,7 +33,6 @@ public final class TypeNames {
             WildcardTypeName wild = (WildcardTypeName) input;
             return wild.lowerBounds.size() == 1 ? erased(wild.lowerBounds.get(0)) : TypeName.OBJECT;
         }
-
         if (input instanceof TypeVariableName) {
             TypeVariableName typeVar = (TypeVariableName) input;
             return typeVar.bounds.size() == 1 ? erased(typeVar.bounds.get(0)) : TypeName.OBJECT;

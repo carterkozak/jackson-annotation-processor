@@ -16,6 +16,8 @@
 
 package net.ckozak.jackson.processor;
 
+import com.fasterxml.jackson.annotation.JacksonAnnotation;
+import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auto.service.AutoService;
@@ -26,6 +28,8 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeName;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
@@ -34,13 +38,16 @@ import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
@@ -56,6 +63,8 @@ import net.ckozak.jackson.processor.model.BoundProperty;
 @SuppressWarnings("checkstyle:CyclomaticComplexity")
 public final class JacksonAnnotationProcessor extends AbstractProcessor {
     private static final ImmutableSet<String> ANNOTATIONS = ImmutableSet.of(JacksonProcessor.class.getName());
+    private static final ImmutableSet<ElementKind> ENCLOSED_ANNOTATED_ELEMENTS =
+            ImmutableSet.of(ElementKind.CONSTRUCTOR, ElementKind.FIELD, ElementKind.METHOD);
 
     private Messager messager;
     private Filer filer;
@@ -100,6 +109,23 @@ public final class JacksonAnnotationProcessor extends AbstractProcessor {
             List<AccessorField> accessorFields = new ArrayList<>();
             TypeElement typeElement = (TypeElement) element;
             for (Element enclosed : typeElement.getEnclosedElements()) {
+                if (!ENCLOSED_ANNOTATED_ELEMENTS.contains(enclosed.getKind())) {
+                    continue;
+                }
+                Collection<AnnotationMirror> jacksonAnnotations = getJacksonAnnotations(enclosed);
+                for (AnnotationMirror mirror : jacksonAnnotations) {
+                    String name = mirror.getAnnotationType()
+                            .asElement()
+                            .getSimpleName()
+                            .toString();
+                    switch (name) {
+                        case "com.fasterxml.jackson.annotation.JsonProperty":
+                        case "com.fasterxml.jackson.annotation.JsonGetter":
+                            break;
+                        default:
+                            messager.printMessage(Kind.ERROR, "Unexpected annotation: " + name, enclosed);
+                    }
+                }
                 JsonProperty property = enclosed.getAnnotation(JsonProperty.class);
                 JsonGetter getter = enclosed.getAnnotation(JsonGetter.class);
                 if (property == null && getter == null) {
@@ -190,5 +216,25 @@ public final class JacksonAnnotationProcessor extends AbstractProcessor {
             }
         }
         return false;
+    }
+
+    private static Collection<AnnotationMirror> getJacksonAnnotations(AnnotatedConstruct element) {
+        Set<AnnotationMirror> jacksonAnnotations = new LinkedHashSet<>();
+        for (AnnotationMirror mirror : element.getAnnotationMirrors()) {
+            DeclaredType annotationType = mirror.getAnnotationType();
+            Element annotationTypeElement = annotationType.asElement();
+            for (AnnotationMirror metaAnnotationMirror : annotationTypeElement.getAnnotationMirrors()) {
+                Element metaAnnotationElement =
+                        metaAnnotationMirror.getAnnotationType().asElement();
+                String toString = metaAnnotationElement.toString();
+                String nameString = metaAnnotationElement.getSimpleName().toString();
+                if (metaAnnotationElement.getSimpleName().contentEquals(JacksonAnnotationsInside.class.getName())) {
+                    jacksonAnnotations.addAll(getJacksonAnnotations(annotationTypeElement));
+                } else if (metaAnnotationElement.getSimpleName().contentEquals(JacksonAnnotation.class.getName())) {
+                    jacksonAnnotations.add(mirror);
+                }
+            }
+        }
+        return jacksonAnnotations;
     }
 }
